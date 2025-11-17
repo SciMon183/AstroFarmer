@@ -6,26 +6,35 @@ const VOC_LEVELS = [
     { max: 500, label: "Silne zanieczyszczenie", action: "Konieczna optymalizacja wentylacji" },
 ];
 
-const sensorSnapshot = {
-    airQualityIndex: 168,
-    envUV: 2.1, // mW/cm2
-    envLI: 12600, // lux
-    envPRES: 1008, // hPa
-    CO2ppm: 742,
-    LUX: 9800,
-    CCT: 4050,
-    colorPoint: { x: 0.32, y: 0.34 },
-    uniqueHumidity: 58,
-    envTEMP: 24.1,
-    soilMoisture: [48, 61],
-    shelves: [
-        { temperature: 23.8, humidity: 56, soil: 48 },
-        { temperature: 22.9, humidity: 61, soil: 61 },
-    ],
-    updatedAt: new Date(),
+const API_ENDPOINTS = {
+    latest: "/api/sensors/latest",
+    export: "/api/sensors/export",
 };
 
 const floorLabels = ["Piętro 1", "Piętro 2"];
+
+let sensorSnapshot = createPlaceholderSnapshot();
+
+const DUPLICATED_SENSOR_SCHEMAS = [
+    {
+        id: "temperature",
+        label: "Temperatura półek",
+        unit: "°C",
+        accessor: (snapshot) => snapshot.shelves.map((floor) => floor.temperature),
+    },
+    {
+        id: "humidity",
+        label: "Wilgotność względna",
+        unit: "%",
+        accessor: (snapshot) => snapshot.shelves.map((floor) => floor.humidity),
+    },
+    {
+        id: "soil",
+        label: "Wilgotność gleby",
+        unit: "%",
+        accessor: (snapshot) => snapshot.shelves.map((floor) => floor.soil),
+    },
+];
 
 const uniqueSensors = [
     {
@@ -89,27 +98,6 @@ const uniqueSensors = [
     },
 ];
 
-const duplicatedSensors = [
-    {
-        id: "temperature",
-        label: "Temperatura półek",
-        unit: "°C",
-        values: sensorSnapshot.shelves.map((floor) => floor.temperature),
-    },
-    {
-        id: "humidity",
-        label: "Wilgotność względna",
-        unit: "%",
-        values: sensorSnapshot.shelves.map((floor) => floor.humidity),
-    },
-    {
-        id: "soil",
-        label: "Wilgotność gleby",
-        unit: "%",
-        values: sensorSnapshot.shelves.map((floor) => floor.soil),
-    },
-];
-
 function classifyState(label) {
     if (/alarm|silne/i.test(label)) return "critical";
     if (/uwaga|średnie|lekkie|polluted/i.test(label)) return "warn";
@@ -149,19 +137,20 @@ function renderDuplicateCards() {
     const container = document.getElementById("duplicateGrid");
     container.innerHTML = "";
 
-    duplicatedSensors.forEach((sensor) => {
+    DUPLICATED_SENSOR_SCHEMAS.forEach((schema) => {
+        const values = schema.accessor(sensorSnapshot);
         const card = document.createElement("article");
         card.className = "dup-card";
 
-        const boxes = sensor.values
+        const boxes = values
             .map(
                 (value, index) => `
             <div class="floor-box">
                 <p class="floor-label">${floorLabels[index] ?? `Poziom ${index + 1}`}</p>
                 <p class="floor-value">
-                    ${formatNumber(value)} <span>${sensor.unit}</span>
+                    ${formatNumber(value)} <span>${schema.unit}</span>
                 </p>
-                <p class="floor-note">${sensor.label}</p>
+                <p class="floor-note">${schema.label}</p>
             </div>
         `,
             )
@@ -169,8 +158,8 @@ function renderDuplicateCards() {
 
         card.innerHTML = `
             <header>
-                <h3>${sensor.label}</h3>
-                <span class="status-pill">${sensor.values.length} czujniki</span>
+                <h3>${schema.label}</h3>
+                <span class="status-pill">${values.length} czujniki</span>
             </header>
             <div class="floor-boxes">
                 ${boxes}
@@ -197,21 +186,126 @@ function startClock() {
     setInterval(tick, 1000);
 }
 
-function updateTimestamp() {
+async function fetchSensorData() {
+    const response = await fetch(API_ENDPOINTS.latest, {
+        headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Błąd pobierania danych (${response.status})`);
+    }
+
+    return response.json();
+}
+
+function createPlaceholderSnapshot() {
+    return {
+        airQualityIndex: 168,
+        envUV: 2.1,
+        envLI: 12600,
+        envPRES: 1008,
+        CO2ppm: 742,
+        LUX: 9800,
+        CCT: 4050,
+        envTEMP: 24.1,
+        shelves: [
+            { temperature: 23.8, humidity: 56, soil: 48 },
+            { temperature: 22.9, humidity: 61, soil: 61 },
+        ],
+        updatedAt: new Date(),
+    };
+}
+
+function mapPayloadToSnapshot(payload = {}) {
+    const fallback = createPlaceholderSnapshot();
+
+    return {
+        airQualityIndex: payload.airQualityIndex ?? fallback.airQualityIndex,
+        envUV: payload.envUV ?? fallback.envUV,
+        envLI: payload.envLI ?? fallback.envLI,
+        envPRES: payload.envPRES ?? fallback.envPRES,
+        CO2ppm: payload.CO2ppm ?? payload.co2Ppm ?? fallback.CO2ppm,
+        LUX: payload.LUX ?? payload.lux ?? fallback.LUX,
+        CCT: payload.CCT ?? payload.cct ?? fallback.CCT,
+        envTEMP: payload.envTEMP ?? payload.temperature ?? fallback.envTEMP,
+        shelves: Array.isArray(payload.shelves) && payload.shelves.length
+            ? payload.shelves.map((shelf, index) => ({
+                  temperature: shelf.temperature ?? fallback.shelves[index]?.temperature ?? 0,
+                  humidity: shelf.humidity ?? fallback.shelves[index]?.humidity ?? 0,
+                  soil: shelf.soil ?? fallback.shelves[index]?.soil ?? 0,
+              }))
+            : fallback.shelves,
+        updatedAt: payload.updatedAt ? new Date(payload.updatedAt) : new Date(),
+    };
+}
+
+async function loadSensorData() {
+    try {
+        const payload = await fetchSensorData();
+        sensorSnapshot = mapPayloadToSnapshot(payload);
+    } catch (error) {
+        console.error("Nie udało się pobrać danych z API. Korzystam z wartości zapasowych.", error);
+        sensorSnapshot = createPlaceholderSnapshot();
+    } finally {
+        renderUniqueCards();
+        renderDuplicateCards();
+        updateTimestamp(sensorSnapshot.updatedAt);
+    }
+}
+
+function updateTimestamp(timestamp = new Date()) {
     const el = document.getElementById("lastUpdated");
-    el.textContent = sensorSnapshot.updatedAt.toLocaleString("pl-PL", {
+    el.textContent = timestamp.toLocaleString("pl-PL", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
     });
 }
 
-function init() {
-    renderUniqueCards();
-    renderDuplicateCards();
-    startClock();
-    updateTimestamp();
+async function downloadDataset() {
+    const button = document.getElementById("downloadBtn");
+
+    if (!button) return;
+
+    button.disabled = true;
+    button.textContent = "Generuję...";
+
+    try {
+        const response = await fetch(API_ENDPOINTS.export, { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error(`Błąd pobierania: ${response.status}`);
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `astrofarmer-sensors-${new Date().toISOString()}.json`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Nie udało się pobrać danych z bazy.", error);
+        alert("Nie udało się pobrać danych. Spróbuj ponownie później.");
+    } finally {
+        button.disabled = false;
+        button.textContent = "Pobierz dane";
+    }
 }
 
-document.addEventListener("DOMContentLoaded", init);
+function attachEventHandlers() {
+    document.getElementById("downloadBtn")?.addEventListener("click", downloadDataset);
+}
+
+async function init() {
+    startClock();
+    attachEventHandlers();
+    renderUniqueCards();
+    renderDuplicateCards();
+    updateTimestamp(sensorSnapshot.updatedAt);
+    await loadSensorData();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    init().catch((error) => console.error(error));
+});
 
