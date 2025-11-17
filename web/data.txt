@@ -1,0 +1,7 @@
+Temperatura + wilgotność --> dwie półki 
+LUX --> jeden
+CCT --> jeden 
+
+AirQuality --> jeden 
+Ciśnienie --> jeden 
+CO2 --> jeden 

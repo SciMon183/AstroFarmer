@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pl">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>AstroFarmer | Panel czujników</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="main.css">
+    </head>
+    <body>
+        <header class="top-bar">
+            <div class="time-stack">
+                <p class="eyebrow">Czas lokalny</p>
+                <p class="time-readout" id="liveClock">--:--:--</p>
+            </div>
+            <div class="logo-wrap">
+                <img src="../img/logoTZ.png" alt="Logo AstroFarmer" class="logo">
+            </div>
+        </header>
+
+        <main>
+            <section class="panel">
+                <div class="section-heading">
+                    <p class="eyebrow">Unikalne odczyty</p>
+                    <h1>Aktualne dane z czujników</h1>
+                    <p class="lead">Wartości odczytywane w czasie rzeczywistym bez duplikatów.</p>
+                    <p class="timestamp">Ostatnia aktualizacja: <span id="lastUpdated">--</span></p>
+                </div>
+                <div class="card-grid" id="uniqueGrid" aria-live="polite"></div>
+            </section>
+
+            <section class="panel">
+                <div class="section-heading">
+                    <p class="eyebrow">Podzielone piętra</p>
+                    <h2>Podwójne czujniki</h2>
+                    <p class="lead">Pomiary, które występują na dwóch półkach, pokazane w osobnych boxach.</p>
+                </div>
+                <div class="duplicate-grid" id="duplicateGrid" aria-live="polite"></div>
+            </section>
+        </main>
+
+        <script src="main.js" type="module"></script>
+    </body>
+</html>
