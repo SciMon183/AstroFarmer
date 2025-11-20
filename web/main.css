@@ -329,8 +329,8 @@ main {
 
 .duplicate-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
 }
 
 .dup-card {
@@ -357,8 +357,8 @@ main {
 
 .floor-boxes {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
 }
 
 .dup-card .chart-wrapper {
@@ -414,6 +414,13 @@ main {
     .data-card {
         min-height: 190px;
     }
+    .duplicate-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+    }
+    .floor-boxes {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
 }
 
 @media (max-width: 700px) {
@@ -449,10 +456,23 @@ main {
     }
 
     .duplicate-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    .floor-boxes {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     }
     .sensor-chart {
         height: 120px;
+    }
+}
+
+@media (max-width: 540px) {
+    .duplicate-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .floor-boxes {
+        grid-template-columns: 1fr;
     }
 }
 
