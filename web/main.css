@@ -39,8 +39,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 24px;
-    padding: 16px clamp(20px, 3vw, 32px);
+    gap: clamp(16px, 3vw, 32px);
+    padding: clamp(16px, 3vw, 28px);
     border: 1px solid var(--panel-border);
     background: rgba(6, 12, 24, 0.85);
     box-shadow: var(--shadow);
@@ -48,6 +48,7 @@ body {
     width: min(1400px, 100%);
     margin: 0 auto;
     min-height: 110px;
+    flex-wrap: wrap;
 }
 
 .time-stack {
@@ -76,6 +77,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: 12px;
 }
 
 .logo {
@@ -321,6 +323,10 @@ main {
     height: 150px;
 }
 
+.panel + .panel {
+    margin-top: 12px;
+}
+
 .duplicate-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -396,8 +402,17 @@ main {
 }
 
 @media (max-width: 1100px) {
+    main {
+        width: 100%;
+    }
+    .top-bar {
+        padding: 20px;
+    }
     .card-grid {
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+    .data-card {
+        min-height: 190px;
     }
 }
 
@@ -411,16 +426,22 @@ main {
         gap: 12px;
     }
     .time-stack.full-span {
-        position: static;
-        transform: none;
-        width: 100%;
-        align-items: center;
-        text-align: center;
+        display: none;
+    }
+    .time-readout {
+        font-size: clamp(1.2rem, 8vw, 2rem);
     }
     .logo-wrap {
         position: static;
         transform: none;
         margin-top: 0;
+        flex-wrap: wrap;
+    }
+    .logo-primary {
+        width: clamp(150px, 60vw, 230px);
+    }
+    .logo-secondary {
+        width: clamp(70px, 24vw, 120px);
     }
 
     .panel {
@@ -429,6 +450,30 @@ main {
 
     .duplicate-grid {
         grid-template-columns: 1fr;
+    }
+    .sensor-chart {
+        height: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 14px;
+    }
+    .top-bar {
+        border-radius: 16px;
+    }
+    .panel {
+        border-radius: 18px;
+    }
+    .data-card {
+        min-height: auto;
+    }
+    .sensor-value {
+        font-size: 1.2rem;
+    }
+    .sensor-chart {
+        height: 100px;
     }
 }
 
