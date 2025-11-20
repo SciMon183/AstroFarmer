@@ -5,20 +5,18 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <title>AstroFarmer | Panel czujników</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <link rel="stylesheet" href="main.css">
     </head>
     <body>
         <header class="top-bar">
-            <div class="header-left">
-                <!-- <button class="ghost-btn" id="downloadBtn" type="button">Pobierz dane</button> -->
-                <div class="logo-wrap inline">
-                    <img src="../img/logoTZ.png" alt="Logo AstroFarmer" class="logo logo-primary">
-                    <img src="../img/dupa.png" alt="" class="logo logo-secondary">
-                </div>
-                <div class="time-stack align-left">
-                    <p class="eyebrow">Czas lokalny</p>
-                    <p class="time-readout" id="liveClock">--:--:--</p>
-                </div>
+            <div class="time-stack align-left full-span">
+                <p class="eyebrow">Czas lokalny</p>
+                <p class="time-readout" id="liveClock">--:--:--</p>
+            </div>
+            <div class="logo-wrap inline">
+                <img src="../img/logoTZ.png" alt="Logo AstroFarmer" class="logo logo-primary">
+                <img src="../img/dupa.png" alt="" class="logo logo-secondary">
             </div>
         </header>
 

@@ -8,11 +8,14 @@ const VOC_LEVELS = [
 
 const API_ENDPOINTS = {
     latest: "http://10.0.20.254:8000/readings?limit=1",
+    history: "http://10.0.20.254:8000/readings?limit=48",
     export: "http://10.0.20.254:8000/readings?limit=100",
 };
 
 const floorLabels = ["Piętro 1", "Piętro 2"];
 let sensorSnapshot = createPlaceholderSnapshot();
+let sensorHistory = createPlaceholderHistory();
+const chartRegistry = new Map();
 
 const DUPLICATED_SENSOR_SCHEMAS = [
     { id: "temperature", label: "Temperatura półek", unit: "°C", accessor: s => s.shelves.map(f => f.temperature) },
@@ -73,6 +76,9 @@ function renderUniqueCards() {
             </header>
             <p class="sensor-value">${formatNumber(value)}${sensor.unit ? `<span>${sensor.unit}</span>` : ""}</p>
             <p class="sensor-meta">${meta?.hint ?? sensor.hint ?? ""}</p>
+            <div class="chart-wrapper">
+                <canvas id="chart-${sensor.id}" class="sensor-chart" aria-label="Wykres ${sensor.label}" role="img"></canvas>
+            </div>
         `;
         container.appendChild(card);
     });
@@ -98,6 +104,9 @@ function renderDuplicateCards() {
                 <span class="status-pill">${values.length} czujniki</span>
             </header>
             <div class="floor-boxes">${boxes}</div>
+            <div class="chart-wrapper">
+                <canvas id="chart-dup-${schema.id}" class="sensor-chart" aria-label="Wykres ${schema.label}" role="img"></canvas>
+            </div>
         `;
         container.appendChild(card);
     });
@@ -121,6 +130,15 @@ async function fetchSensorData() {
     return json.data[0];
 }
 
+async function fetchSensorHistory() {
+    const response = await fetch(API_ENDPOINTS.history, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`Błąd pobierania historii (${response.status})`);
+    const json = await response.json();
+    if (json.status !== "ok" || !Array.isArray(json.data) || json.data.length === 0)
+        throw new Error("Nieprawidłowa historia z API");
+    return json.data;
+}
+
 function mapPayloadToSnapshot(payload = {}) {
     const fallback = createPlaceholderSnapshot();
     return {
@@ -140,17 +158,26 @@ function mapPayloadToSnapshot(payload = {}) {
     };
 }
 
+function mapHistoryPayloads(collection = []) {
+    if (!Array.isArray(collection) || collection.length === 0) return createPlaceholderHistory();
+    const mapped = collection.map(mapPayloadToSnapshot);
+    return mapped.reverse().slice(-60);
+}
+
 async function loadSensorData() {
     try {
-        const payload = await fetchSensorData();
-        sensorSnapshot = mapPayloadToSnapshot(payload);
+        const [latestPayload, historyPayload] = await Promise.all([fetchSensorData(), fetchSensorHistory()]);
+        sensorSnapshot = mapPayloadToSnapshot(latestPayload);
+        sensorHistory = mapHistoryPayloads(historyPayload);
     } catch (error) {
         console.error("Nie udało się pobrać danych z API. Korzystam z wartości zapasowych.", error);
         sensorSnapshot = createPlaceholderSnapshot();
+        sensorHistory = mapHistoryPayloads();
     } finally {
         renderUniqueCards();
         renderDuplicateCards();
         updateTimestamp(sensorSnapshot.updatedAt);
+        renderCharts();
     }
 }
 
@@ -208,12 +235,135 @@ async function downloadDataset() {
     }
 }
 
+function renderCharts() {
+    if (!sensorHistory.length) return;
+    renderUniqueCharts();
+    renderDuplicateCharts();
+}
+
+function renderUniqueCharts() {
+    const labels = sensorHistory.map(snap => formatTimeLabel(snap.updatedAt));
+    uniqueSensors.forEach(sensor => {
+        const canvasEl = document.getElementById(`chart-${sensor.id}`);
+        if (!canvasEl) return;
+        const dataset = sensorHistory.map(snap => snap[sensor.id]);
+        const unitLabel = sensor.unit ? ` (${sensor.unit})` : "";
+        upsertChart(`unique-${sensor.id}`, canvasEl, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: `${sensor.label}${unitLabel}`,
+                        data: dataset,
+                        borderColor: getChartColor(0),
+                        backgroundColor: getChartColor(0, 0.2),
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 0,
+                    },
+                ],
+            },
+        });
+    });
+}
+
+function renderDuplicateCharts() {
+    const labels = sensorHistory.map(snap => formatTimeLabel(snap.updatedAt));
+    DUPLICATED_SENSOR_SCHEMAS.forEach(schema => {
+        const canvasEl = document.getElementById(`chart-dup-${schema.id}`);
+        if (!canvasEl) return;
+        const datasetPerFloor = floorLabels.map((floor, idx) => ({
+            label: floor,
+            data: sensorHistory.map(snap => schema.accessor(snap)[idx] ?? null),
+            borderColor: getChartColor(idx),
+            backgroundColor: getChartColor(idx, 0.15),
+            tension: 0.35,
+            pointRadius: 0,
+            fill: idx === 0,
+        }));
+        upsertChart(`dup-${schema.id}`, canvasEl, {
+            type: "line",
+            data: {
+                labels,
+                datasets: datasetPerFloor,
+            },
+        });
+    });
+}
+
+function upsertChart(key, canvasEl, config) {
+    const ctx = canvasEl.getContext("2d");
+    const baseOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+            legend: { display: true, labels: { color: "#f5f7fb", usePointStyle: true } },
+            tooltip: {
+                backgroundColor: "rgba(3,7,18,0.85)",
+                borderColor: "rgba(255,255,255,0.12)",
+                borderWidth: 1,
+                titleColor: "#f5f7fb",
+                bodyColor: "#a0accd",
+            },
+        },
+        scales: {
+            x: {
+                ticks: { color: "#a0accd", maxTicksLimit: 5 },
+                grid: { color: "rgba(255,255,255,0.05)" },
+            },
+            y: {
+                ticks: { color: "#a0accd" },
+                grid: { color: "rgba(255,255,255,0.05)" },
+            },
+        },
+    };
+    const existing = chartRegistry.get(key);
+    if (existing) {
+        if (existing.canvas !== canvasEl) {
+            existing.destroy();
+            chartRegistry.delete(key);
+        } else {
+            existing.data = config.data;
+            existing.options = { ...baseOptions, ...(config.options ?? {}) };
+            existing.update();
+            return;
+        }
+    }
+    const chart = new Chart(ctx, { ...config, options: { ...baseOptions, ...(config.options ?? {}) } });
+    chartRegistry.set(key, chart);
+}
+
+function formatTimeLabel(date) {
+    const d = new Date(date);
+    return d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+}
+
+function getChartColor(index = 0, alpha = 1) {
+    const palette = [
+        `rgba(93, 226, 162, ${alpha})`,
+        `rgba(96, 165, 250, ${alpha})`,
+        `rgba(249, 115, 22, ${alpha})`,
+    ];
+    return palette[index % palette.length];
+}
+
+function createPlaceholderHistory(count = 12) {
+    return Array.from({ length: count }, (_, index) => {
+        const snapshot = createPlaceholderSnapshot();
+        snapshot.updatedAt = new Date(Date.now() - (count - index) * 60000);
+        return snapshot;
+    });
+}
+
 async function init() {
     startClock();
     attachEventHandlers();
     renderUniqueCards();
     renderDuplicateCards();
     updateTimestamp(sensorSnapshot.updatedAt);
+    renderCharts();
     await loadSensorData();
     setInterval(loadSensorData, 300000); // auto-refresh every 5 minutes
 }
