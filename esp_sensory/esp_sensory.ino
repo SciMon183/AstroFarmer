@@ -19,14 +19,14 @@ DFRobot_SCD4X SCD4X(&Wire, /*i2cAddr = */SCD4X_I2C_ADDR);
 DFRobot_AS7341 as7341;
 DFRobot_ColorTemperature CT(/*s =*/&Wire);
 
-const char* serverUrl = "http://10.0.20.254:8000/upload";
-const char* WIFI_SSID = "TechnoZone";
-const char* WIFI_PASS = "TECHNOzone2420!";
+const char* serverUrl = "";
+const char* WIFI_SSID = "ssid";
+const char* WIFI_PASS = "pass";
 
 
-IPAddress local_IP(192, 168, 61, 16);     // adres ESP32
-IPAddress gateway(192, 168, 61, 17);        // Twoja brama
-IPAddress subnet(255, 255, 255, 0); 
+IPAddress local_IP(add);     // adres ESP32
+IPAddress gateway(add);        // Twoja brama
+IPAddress subnet(add); 
 
 uint16_t airQualityIndex;
 float  shtTEMP, shtHUM;
