@@ -8,17 +8,17 @@
 #define COUNTER_ADDR 0     // adres licznika w EEPROM
 
 // --- ustawienia WiFi ---
-const char* ssid = "TechnoZone";
-const char* password = "TECHNOzone2420!";
+const char* ssid = "ssid";
+const char* password = "pass";
 
 
 uint64_t photoCounter = 0; // bardzo duży licznik
 // --- ustawienia FTP ---
-char ftp_server[] = "10.0.20.254";
-char ftp_user[]   = "roslinki-ftp";
-char ftp_pass[]   = "kamil_to_debil";
+char ftp_server[] = "IP";
+char ftp_user[]   = "log";
+char ftp_pass[]   = "pass";
 char ftp_path[] = "/home/roslinki-ftp";  // folder zdalny
-const char* serverUrl = "http://10.0.20.254:8000/upload-picture";
+const char* serverUrl = "";
 
 // --- statyczny adres dla ESP32 ---
 IPAddress local_IP(192,168,61,15);     // adres ESP32
