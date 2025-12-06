@@ -7,9 +7,9 @@ const VOC_LEVELS = [
 ];
 
 const API_ENDPOINTS = {
-    latest: "http://10.0.20.254:8000/readings?limit=1",
-    history: "http://10.0.20.254:8000/readings?limit=48",
-    export: "http://10.0.20.254:8000/readings?limit=100",
+    latest: "",
+    history: "",
+    export: "",
 };
 
 const floorLabels = ["Piętro 1", "Piętro 2"];
